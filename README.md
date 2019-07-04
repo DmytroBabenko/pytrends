@@ -335,3 +335,19 @@ Returns dictionary
 * With some ideas pulled from Matt Reid's Google Trends API
 
   - https://bitbucket.org/mattreid9956/google-trend-api/overview
+  
+# Changes compare with original
+* There were added 4 functions in request.py
+ - related_top_queries_by_rising - to acquire top queries ranked by rising by specified date and geo (parameters are set in payload)
+ - related_top_topics_by_rising - to acquire top topics ranked by rising by specified date and geo 
+ - related_top_queries_by_top - to acquire top queries ranked by top by specified date and geo
+ - related_top_topics_by_top - to acquire top topics ranked by top by specified date and geo
+ 
+# Acquire top google-trends by geo and timeframe 
+There were implmented 4 function to acquire top topics from google trends by geo location and timeframme. Befere running this function, there were should be built payload with space kw_list. For example:
+
+pytrend.build_payload(kw_list=[' '], geo='US', timeframe='2019-04-22 2019-04-22')
+top_queries_by_rising_df = pytrend.related_top_queries_by_rising()
+print(top_queries_by_rising_df.head())
+
+The code above gives us top queries in USA ducring 22 April 2019. 

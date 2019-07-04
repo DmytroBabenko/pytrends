@@ -11,13 +11,21 @@ from pandas.io.json.normalize import nested_to_record
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
 
-from pytrends import exceptions
+# from pytrends import exceptions
 
 if sys.version_info[0] == 2:  # Python 2
     from urllib import quote
 else:  # Python 3
     from urllib.parse import quote
 
+class ResponseError(Exception):
+    """Something was wrong with the response from Google"""
+
+    def __init__(self, message, response):
+        super(Exception, self).__init__(message)
+
+        # pass response so it can be handled upstream
+        self.response = response
 
 class TrendReq(object):
     """
@@ -138,7 +146,7 @@ class TrendReq(object):
             return json.loads(content)
         else:
             # error
-            raise exceptions.ResponseError(
+            raise ResponseError(
                 'The request failed: Google returned a '
                 'response with code {0}.'.format(response.status_code),
                 response=response)
@@ -525,3 +533,153 @@ class TrendReq(object):
 
         # Return the dataframe with results from our timeframe
         return df.loc[initial_start_date:end_date]
+
+
+    def related_top_queries_by_rising(self):
+        related_payload = dict()
+        result_dict = dict()
+        if len(self.related_queries_widget_list) == 0:
+            return None
+
+        request_json = self.related_queries_widget_list[0]
+        # convert to string as requests will mangle
+        related_payload['req'] = json.dumps(request_json['request'])
+        related_payload['token'] = request_json['token']
+        related_payload['tz'] = self.tz
+
+        # parse the returned json
+        req_json = self._get_data(
+            url=TrendReq.RELATED_QUERIES_URL,
+            method=TrendReq.GET_METHOD,
+            trim_chars=5,
+            params=related_payload,
+        )
+
+
+        # top queries
+        try:
+            ranked_list = req_json['default']['rankedList'][1]['rankedKeyword']
+            data = []
+            for item in ranked_list:
+                queary = item['query']
+                rising = item['formattedValue']
+
+                data.append([queary, rising])
+
+            top_df = pd.DataFrame(data, columns=['Search queries - rising', 'Rising'])
+            return top_df
+        except KeyError:
+            return None
+
+
+    def related_top_topics_by_rising(self):
+        related_payload = dict()
+        result_dict = dict()
+        if len(self.related_topics_widget_list) == 0:
+            return None
+
+        request_json = self.related_topics_widget_list[0]
+        # convert to string as requests will mangle
+        related_payload['req'] = json.dumps(request_json['request'])
+        related_payload['token'] = request_json['token']
+        related_payload['tz'] = self.tz
+
+        # parse the returned json
+        req_json = self._get_data(
+            url=TrendReq.RELATED_QUERIES_URL,
+            method=TrendReq.GET_METHOD,
+            trim_chars=5,
+            params=related_payload,
+        )
+
+        # top queries
+        try:
+            ranked_list = req_json['default']['rankedList'][1]['rankedKeyword']
+            data = []
+            for item in ranked_list:
+                name = f"{item['topic']['title']} - {item['topic']['type']}"
+                formattedValue = item['formattedValue']
+                data.append([name, formattedValue])
+
+            top_df = pd.DataFrame(data, columns=['Search topics - rising', 'Rising'])
+            return top_df
+
+        except KeyError:
+            return None
+        
+        
+    def related_top_queries_by_top(self):
+        related_payload = dict()
+        if len(self.related_queries_widget_list) == 0:
+            return None
+
+        request_json = self.related_queries_widget_list[0]
+        # convert to string as requests will mangle
+        related_payload['req'] = json.dumps(request_json['request'])
+        related_payload['token'] = request_json['token']
+        related_payload['tz'] = self.tz
+
+        # parse the returned json
+        req_json = self._get_data(
+            url=TrendReq.RELATED_QUERIES_URL,
+            method=TrendReq.GET_METHOD,
+            trim_chars=5,
+            params=related_payload,
+        )
+
+
+        # top queries
+        try:
+            ranked_list = req_json['default']['rankedList'][0]['rankedKeyword']
+            data = []
+            for item in ranked_list:
+                queary = item['query']
+                top = item['formattedValue']
+
+                data.append([queary, top])
+
+            top_df = pd.DataFrame(data, columns=['Search queries - top', 'Top'])
+            return top_df
+        except KeyError:
+            return None
+
+
+    def related_top_topics_by_top(self):
+        related_payload = dict()
+        result_dict = dict()
+        if len(self.related_topics_widget_list) == 0:
+            return None
+
+        request_json = self.related_topics_widget_list[0]
+        # convert to string as requests will mangle
+        related_payload['req'] = json.dumps(request_json['request'])
+        related_payload['token'] = request_json['token']
+        related_payload['tz'] = self.tz
+
+        # parse the returned json
+        req_json = self._get_data(
+            url=TrendReq.RELATED_QUERIES_URL,
+            method=TrendReq.GET_METHOD,
+            trim_chars=5,
+            params=related_payload,
+        )
+
+        # top queries
+        try:
+            ranked_list = req_json['default']['rankedList'][0]['rankedKeyword']
+            data = []
+            for item in ranked_list:
+                name = f"{item['topic']['title']} - {item['topic']['type']}"
+                formattedValue = item['formattedValue']
+                data.append([name, formattedValue])
+
+            top_df = pd.DataFrame(data, columns=['Search topics - top', 'Top'])
+            return top_df
+
+        except KeyError:
+            return None
+
+
+
+
+
