@@ -11,6 +11,8 @@ from pandas.io.json.normalize import nested_to_record
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
 
+from pyspark.sql import Row
+
 # from pytrends import exceptions
 
 if sys.version_info[0] == 2:  # Python 2
@@ -680,6 +682,58 @@ class TrendReq(object):
             return None
 
 
+    def related_top_search_topics(self, spark=None):
+        df_rising = self.related_top_topics_by_rising()
+        df_top = self.related_top_topics_by_top()
+
+        df = self._merge_by_rising_and_top(df_rising, df_top)
+
+        if spark is None:
+            return df
+
+        spark_df = self._pandas2pyspark(spark, df, self.geo)
+        return spark_df
+
+    def related_top_search_queries(self, spark=None):
+        df_rising = self.related_top_queries_by_rising()
+        df_top = self.related_top_queries_by_top()
+
+        df = self._merge_by_rising_and_top(df_rising, df_top)
+
+        if spark is None:
+            return df
+
+
+        spark_df = self._pandas2pyspark(spark, df, self.geo)
+        return spark_df
+
+    def _merge_by_rising_and_top(self, df_rising, df_top):
+        len_rising = len(df_rising)
+        len_top = len(df_top)
+
+        if len_rising < len_top:
+            for i in range(len_rising, len_top):
+                df_rising = df_rising.append(pd.Series(), ignore_index=True)
+        elif len_top < len_rising:
+            for i in range(len_top, len_rising):
+                df_top = df_top.append(pd.Series(), ignore_index=True)
+
+        df_rising.insert(1, df_top.columns[0], df_top[df_top.columns[0]].values, True)
+        df_rising.insert(3, df_top.columns[1], df_top[df_top.columns[1]].values, True)
+
+        return df_rising
+
+    def _pandas2pyspark(self, spark, df_pd, geo):
+        columns = df_pd.columns
+
+        row = Row(columns[0], columns[1], columns[2], columns[3], 'geo')
+        seq = []
+        for i in range(0, len(df_pd)):
+            row_item = df_pd.iloc[i]
+            seq.append(row(str(row_item[0]), str(row_item[1]), str(row_item[2]), row_item[3], geo))
+
+        dframe = spark.createDataFrame(seq)
+        return dframe
 
 
 
